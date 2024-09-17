@@ -27,7 +27,7 @@ class Bracket():
         self.num_advance = 2
 
     @staticmethod
-    def _fill_groups(players, preferred_group_size):
+    def _seed_groups(players, preferred_group_size):
         # for simplicity just making this only work for 2 advance
         # make groups
         groups = []
@@ -56,8 +56,13 @@ class Bracket():
         return groups
 
     @staticmethod
-    def _fill_groups_interleaved(players, preferred_group_size):
+    def _snake_seed_groups(players, preferred_group_size):
+        # fill groups with "snake" style seeding
+        # this should reverse the groups after every pass
+        # is the only difference
+        #
         # for simplicity just making this only work for 2 advance
+        players.sort(key=lambda p: -1 * p.rating)
         # make groups
         q, r = divmod(len(players), preferred_group_size)
         initial_group_num = q + r
@@ -71,6 +76,11 @@ class Bracket():
             # alternate group filling by pairing high seeded players
             # with lower seeded ones
             group_idx = i % initial_group_num
+            # for each pass, reverse the groups that we have
+            # this is "snake" seeding
+            if group_idx == 0:
+                # when group_idx is 0 we have finished the pass through the list of groups
+                groups.reverse()
             p = players.pop(0)
             groups[group_idx].append(p)
 
@@ -84,10 +94,13 @@ class Bracket():
         return groups
 
     @classmethod
-    def from_players_list(cls, players, preferred_group_size=4):
+    def from_players_list(cls, players, preferred_group_size=4, snake_seed=False):
         # for simplicity just making this only work for 2 advance
         # make groups
-        groups = cls._fill_groups_interleaved(players, preferred_group_size)
+        if snake_seed:
+            groups = cls._snake_seed_groups(players, preferred_group_size)
+        else:
+            groups = cls._seed_groups(players, preferred_group_size)
         # sort players in each group
         groups = [sorted(g, key=lambda p: -1 * p.rating) for g in groups]
         groups = [Group(players=g, group_number=0) for g in groups]
@@ -158,7 +171,7 @@ if __name__ == '__main__':
         for row in reader:
             players.append(Player(row[0], int(row[1])))
 
-    bracket = Bracket.from_players_list(players, preferred_group_size=args.group_size)
+    bracket = Bracket.from_players_list(players, preferred_group_size=args.group_size, snake_seed=True)
     bracket.print_groups()
     print()
     bracket.display()
