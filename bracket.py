@@ -183,8 +183,8 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-g', "--group_size", default=4, type=int) 
-    parser.add_argument('-r', "--group_rounding", default='up')    
+    parser.add_argument('-g', "--group_size", default=4, type=int, help="preferred group size to use for RR groups") 
+    parser.add_argument('-r', "--group_rounding", default='up', help="allowed values ('up', 'down'). A value of 'up' allows for groups greater than preferred group size, 'down' allows for smaller")    
     args = parser.parse_args()
 
     players = []
