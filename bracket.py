@@ -59,7 +59,11 @@ class Bracket():
         return groups
 
     @staticmethod
-    def _snake_seed_groups(players, preferred_group_size, force_even_group_num=False):
+    def _snake_seed_groups(players, preferred_group_size, force_even_group_num=False, group_rounding_strat='up'):
+        # TODO: Should maybe add a rounding strategy "up" or "down"
+        # where we can decide whether we allow some groups of (preferred_group_size + 1)
+        # or would rather allow (preferred_group_size - 1)
+        # 
         # fill groups with "snake" style seeding
         # this should reverse the groups after every pass
         # is the only difference
@@ -68,12 +72,21 @@ class Bracket():
         players.sort(key=lambda p: -1 * p.rating)
         # make groups
         q, r = divmod(len(players), preferred_group_size)
-        additional_groups = 0
-        if r > 0:
-            additional_groups = 1
-        initial_group_num = q + additional_groups
+        num_groups = 0
+        if group_rounding_strat == 'up':
+            num_groups = q
+        elif group_rounding_strat == 'down':
+            num_groups = q
+            if r > 0:
+                print('adding one to number of groups for rounding strategy "down"')
+                num_groups += 1
+        else:
+            raise ValueError('group_rounding_strat must be one of ("up", "down")')
+
+        # determine group rounding strategy
+        # e.g. would we rather allow some groups to have 1 less or some groups to have 1 more than preferred
         groups = [] 
-        for _ in range(initial_group_num):
+        for _ in range(num_groups):
             groups.append([])
 
         group = []
@@ -81,7 +94,7 @@ class Bracket():
         for i in range(num_players):
             # alternate group filling by pairing high seeded players
             # with lower seeded ones
-            group_idx = i % initial_group_num
+            group_idx = i % num_groups
             # for each pass, reverse the groups that we have
             # this is "snake" seeding
             if group_idx == 0:
@@ -101,13 +114,15 @@ class Bracket():
         return groups
 
     @classmethod
-    def from_players_list(cls, players, preferred_group_size=4, snake_seed=False):
+    def from_players_list(cls, players, preferred_group_size=4, group_rounding_strat='up'):
         # for simplicity just making this only work for 2 advance
         # make groups
-        if snake_seed:
-            groups = cls._snake_seed_groups(players, preferred_group_size)
-        else:
-            groups = cls._seed_groups(players, preferred_group_size)
+        groups = cls._snake_seed_groups(
+            players=players,
+            preferred_group_size=preferred_group_size,
+            group_rounding_strat=group_rounding_strat
+        )
+
         # sort players in each group
         groups = [sorted(g, key=lambda p: -1 * p.rating) for g in groups]
         groups = [Group(players=g, group_number=0) for g in groups]
@@ -168,9 +183,9 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-g', "--group_size", default=4, type=int)    
+    parser.add_argument('-g', "--group_size", default=4, type=int) 
+    parser.add_argument('-r', "--group_rounding", default='up')    
     args = parser.parse_args()
-
 
     players = []
     with open('players.csv') as f:
@@ -178,7 +193,11 @@ if __name__ == '__main__':
         for row in reader:
             players.append(Player(row[0], int(row[1])))
 
-    bracket = Bracket.from_players_list(players, preferred_group_size=args.group_size, snake_seed=True)
+    bracket = Bracket.from_players_list(
+        players, 
+        preferred_group_size=args.group_size,
+        group_rounding_strat=args.group_rounding
+    )
     bracket.print_groups()
     print()
     bracket.display()

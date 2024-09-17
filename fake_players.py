@@ -18,11 +18,17 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-g', "--group_size", default=4, type=int)  
-    parser.add_argument('-n', "--num_players", type=int)  
+    parser.add_argument('-n', "--num_players", type=int)
+    parser.add_argument('-r', "--group_rounding", default='up')
     args = parser.parse_args()
 
     players = make_fake_players(2050, args.num_players)
-    bracket = Bracket.from_players_list(players, preferred_group_size=args.group_size, snake_seed=True)
+    
+    bracket = Bracket.from_players_list(
+        players, 
+        preferred_group_size=args.group_size,
+        group_rounding_strat=args.group_rounding
+    )
 
     bracket.print_groups()
     print()
