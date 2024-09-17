@@ -22,6 +22,9 @@ class Group():
 
 
 class Bracket():
+    # TODO: revisit seeding strategy
+    # maybe don't worry about number of groups, let bracket lib take care of byes
+    # see algo description at https://en.wikipedia.org/wiki/Serpentine_system
     def __init__(self, groups):
         self.groups = groups
         self.num_advance = 2
@@ -56,7 +59,7 @@ class Bracket():
         return groups
 
     @staticmethod
-    def _snake_seed_groups(players, preferred_group_size):
+    def _snake_seed_groups(players, preferred_group_size, force_even_group_num=False):
         # fill groups with "snake" style seeding
         # this should reverse the groups after every pass
         # is the only difference
@@ -65,7 +68,10 @@ class Bracket():
         players.sort(key=lambda p: -1 * p.rating)
         # make groups
         q, r = divmod(len(players), preferred_group_size)
-        initial_group_num = q + r
+        additional_groups = 0
+        if r > 0:
+            additional_groups = 1
+        initial_group_num = q + additional_groups
         groups = [] 
         for _ in range(initial_group_num):
             groups.append([])
@@ -85,11 +91,12 @@ class Bracket():
             groups[group_idx].append(p)
 
         # handle group adjustment when there is an odd number of groups
-        if len(groups) % 2 != 0:
-            last_group = groups.pop(-1)
-            groups.reverse()
-            for i, player in enumerate(last_group):
-                groups[i].append(player)
+        if force_even_group_num:
+            if len(groups) % 2 != 0:
+                last_group = groups.pop(-1)
+                groups.reverse()
+                for i, player in enumerate(last_group):
+                    groups[i].append(player)
 
         return groups
 
