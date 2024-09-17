@@ -12,21 +12,19 @@ def make_fake_players(top_rating, num_players):
 
     return players
 
-def print_groups(bracket):
-    letters = ['A', 'B', 'C', 'D', 'E']
-
-    print(f'TOTAL GROUPS: {len(bracket.groups)}')
-    print()
-    for group in bracket.groups:
-        print(f'GROUP {group.group_number}')
-        print('-' * 40)
-        for i, player in enumerate(group.players):
-            print(f'{letters[i]}) {player.name} ({player.rating})')
-        print()
-
 
 if __name__ == '__main__':
-    players = make_fake_players(2050, 15)
-    bracket = Bracket.from_players_list(players, preferred_group_size=4)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-g', "--group_size", default=4, type=int)  
+    parser.add_argument('-n', "--num_players", type=int)  
+    args = parser.parse_args()
+
+    players = make_fake_players(2050, args.num_players)
+    bracket = Bracket.from_players_list(players, preferred_group_size=args.group_size, snake_seed=True)
 
     bracket.print_groups()
+    print()
+    bracket.display()
+    print()
