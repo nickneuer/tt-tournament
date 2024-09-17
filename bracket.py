@@ -1,4 +1,5 @@
 import json
+import itertools
 from lib.bracket_viz import Bracket as BracketViz
 
 
@@ -25,8 +26,8 @@ class Bracket():
         self.groups = groups
         self.num_advance = 2
 
-    @classmethod
-    def from_players_list(cls, players, preferred_group_size=4):
+    @staticmethod
+    def _fill_groups(players, preferred_group_size):
         # for simplicity just making this only work for 2 advance
         # make groups
         groups = []
@@ -52,6 +53,41 @@ class Bracket():
             for i, player in enumerate(last_group):
                 groups[i].append(player)
 
+        return groups
+
+    @staticmethod
+    def _fill_groups_interleaved(players, preferred_group_size):
+        # for simplicity just making this only work for 2 advance
+        # make groups
+        q, r = divmod(len(players), preferred_group_size)
+        initial_group_num = q + r
+        groups = [] 
+        for _ in range(initial_group_num):
+            groups.append([])
+
+        group = []
+        num_players = len(players)
+        for i in range(num_players):
+            # alternate group filling by pairing high seeded players
+            # with lower seeded ones
+            group_idx = i % initial_group_num
+            p = players.pop(0)
+            groups[group_idx].append(p)
+
+        # handle group adjustment when there is an odd number of groups
+        if len(groups) % 2 != 0:
+            last_group = groups.pop(-1)
+            groups.reverse()
+            for i, player in enumerate(last_group):
+                groups[i].append(player)
+
+        return groups
+
+    @classmethod
+    def from_players_list(cls, players, preferred_group_size=4):
+        # for simplicity just making this only work for 2 advance
+        # make groups
+        groups = cls._fill_groups_interleaved(players, preferred_group_size)
         # sort players in each group
         groups = [sorted(g, key=lambda p: -1 * p.rating) for g in groups]
         groups = [Group(players=g, group_number=0) for g in groups]
@@ -73,6 +109,12 @@ class Bracket():
             print('-' * 40)
             for i, player in enumerate(group.players):
                 print(f'{letters[i]}) {player.name} ({player.rating})')
+            # print match order
+            player_letters = letters[0: len(group.players)]
+            matches = make_rr_matches(player_letters)
+            print()
+            for i, (p1, p2) in enumerate(matches):
+                print(f'  {i + 1}. {p1} vs {p2}')
             print()
 
     def display(self):
@@ -88,6 +130,17 @@ class Bracket():
         #bviz.shuffle()
         bviz.show()
 
+
+def make_rr_matches(letters):
+    pairs = list(itertools.combinations(letters, 2))
+    matches = []
+    for i in range(len(pairs)):
+        if i % 2 == 0:
+            pair = pairs.pop(0)
+        else:
+            pair = pairs.pop(-1)
+        matches.append(pair)
+    return matches
 
 
 if __name__ == '__main__':
