@@ -1,0 +1,94 @@
+TOTAL GROUPS: 5
+
+GROUP 1
+----------------------------------------
+A) James (2020)
+B) Dan (1654)
+C) Nick (1619)
+
+  1. A vs B
+  2. B vs C
+  3. A vs C
+
+GROUP 2
+----------------------------------------
+A) Andy (2000)
+B) Farzin (1680)
+C) Lev (1500)
+
+  1. A vs B
+  2. B vs C
+  3. A vs C
+
+GROUP 3
+----------------------------------------
+A) Jabari (1950)
+B) Minghao (1710)
+C) Chris (1450)
+
+  1. A vs B
+  2. B vs C
+  3. A vs C
+
+GROUP 4
+----------------------------------------
+A) Austin (1940)
+B) Anthony (1720)
+C) Sam (1400)
+D) Jenna (1200)
+
+  1. A vs B
+  2. C vs D
+  3. A vs C
+  4. B vs D
+  5. A vs D
+  6. B vs C
+
+GROUP 5
+----------------------------------------
+A) Hanson (1820)
+B) Alan (1750)
+C) Eric (1400)
+D) Anna (1300)
+
+  1. A vs B
+  2. C vs D
+  3. A vs C
+  4. B vs D
+  5. A vs D
+  6. B vs C
+
+
+Seed        Round 1       Round 2       Round 3       Round 4       Round 5
+   1   Group 1 1st \
+                     ----------- \
+ bye   ----------- /
+                                   ----------- \
+   8   Group 3 2nd \
+                     ----------- /
+   9   Group 4 2nd /
+                                                 ----------- \
+   4   Group 4 1st \
+                     ----------- \
+ bye   ----------- /
+                                   ----------- /
+   5   Group 5 1st \
+                     ----------- /
+ bye   ----------- /
+                                                               -----------
+   2   Group 2 1st \
+                     ----------- \
+ bye   ----------- /
+                                   ----------- \
+   7   Group 2 2nd \
+                     ----------- /
+  10   Group 5 2nd /
+                                                 ----------- /
+   3   Group 3 1st \
+                     ----------- \
+ bye   ----------- /
+                                   ----------- /
+   6   Group 1 2nd \
+                     ----------- /
+ bye   ----------- /
+
