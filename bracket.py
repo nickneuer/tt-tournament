@@ -177,6 +177,15 @@ def make_rr_matches(letters):
         matches.append(pair)
     return matches
 
+def load_players_file(players_file):
+    players = []
+    with open(players_file) as f:
+        reader = csv.reader(f)
+        for row in reader:
+            players.append(Player(row[0], int(row[1])))
+
+    return players
+
 
 if __name__ == '__main__':
     import csv
@@ -184,14 +193,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-g', "--group_size", default=4, type=int, help="preferred group size to use for RR groups") 
-    parser.add_argument('-r', "--group_rounding", default='up', help="allowed values ('up', 'down'). A value of 'up' allows for groups greater than preferred group size, 'down' allows for smaller")    
+    parser.add_argument('-r', "--group_rounding", default='up', help="allowed values ('up', 'down'). A value of 'up' allows for groups greater than preferred group size, 'down' allows for smaller")
+    parser.add_argument('-i', "--input_file", default='input/players.csv', help="input csv file of player 'name', 'rating'")   
     args = parser.parse_args()
 
-    players = []
-    with open('players.csv') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            players.append(Player(row[0], int(row[1])))
+    players = load_players_file(args.input_file)
 
     bracket = Bracket.from_players_list(
         players, 
