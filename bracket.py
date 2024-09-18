@@ -59,18 +59,14 @@ class Bracket():
         return groups
 
     @staticmethod
-    def _snake_seed_groups(players, preferred_group_size, force_even_group_num=False, group_rounding_strat='up'):
-        # TODO: Should maybe add a rounding strategy "up" or "down"
-        # where we can decide whether we allow some groups of (preferred_group_size + 1)
-        # or would rather allow (preferred_group_size - 1)
-        # 
+    def _snake_seed_groups(players, preferred_group_size, group_rounding_strat='up'):
         # fill groups with "snake" style seeding
         # this should reverse the groups after every pass
         # is the only difference
         #
-        # for simplicity just making this only work for 2 advance
         players.sort(key=lambda p: -1 * p.rating)
-        # make groups
+        # determine group rounding strategy
+        # e.g. would we rather allow some groups to have 1 less or some groups to have 1 more than preferred
         q, r = divmod(len(players), preferred_group_size)
         num_groups = 0
         if group_rounding_strat == 'up':
@@ -83,40 +79,30 @@ class Bracket():
         else:
             raise ValueError('group_rounding_strat must be one of ("up", "down")')
 
-        # determine group rounding strategy
-        # e.g. would we rather allow some groups to have 1 less or some groups to have 1 more than preferred
         groups = [] 
         for _ in range(num_groups):
             groups.append([])
-
+        # populate the groups with players
         group = []
         num_players = len(players)
         for i in range(num_players):
-            # alternate group filling by pairing high seeded players
-            # with lower seeded ones
+            # append sorted players to different groups 
+            # want to avoid putting the two highest rated players 
+            # in the same group for example
             group_idx = i % num_groups
             # for each pass, reverse the groups that we have
             # this is "snake" seeding
+            # when group_idx is 0 we have finished the pass through the list of groups
             if group_idx == 0:
-                # when group_idx is 0 we have finished the pass through the list of groups
                 groups.reverse()
             p = players.pop(0)
             groups[group_idx].append(p)
-
-        # handle group adjustment when there is an odd number of groups
-        if force_even_group_num:
-            if len(groups) % 2 != 0:
-                last_group = groups.pop(-1)
-                groups.reverse()
-                for i, player in enumerate(last_group):
-                    groups[i].append(player)
 
         return groups
 
     @classmethod
     def from_players_list(cls, players, preferred_group_size=4, group_rounding_strat='up'):
-        # for simplicity just making this only work for 2 advance
-        # make groups
+        # populate player groups and make seeded bracket
         groups = cls._snake_seed_groups(
             players=players,
             preferred_group_size=preferred_group_size,
@@ -159,8 +145,8 @@ class Bracket():
             2: 'nd',
             3: 'rd'
         }
-        for group in self.groups:
-            for n in range(self.num_advance):
+        for n in range(self.num_advance):
+            for group in self.groups:
                 # 1st 2nd 3rd suffixes e.g. "nd"
                 place = n + 1
                 # default to "th" if there's not an exception for it
