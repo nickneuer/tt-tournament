@@ -25,9 +25,9 @@ class Bracket():
     # TODO: revisit seeding strategy
     # maybe don't worry about number of groups, let bracket lib take care of byes
     # see algo description at https://en.wikipedia.org/wiki/Serpentine_system
-    def __init__(self, groups):
+    def __init__(self, groups, num_advance=2):
         self.groups = groups
-        self.num_advance = 2
+        self.num_advance = num_advance
 
     @staticmethod
     def _seed_groups(players, preferred_group_size):
@@ -154,12 +154,19 @@ class Bracket():
 
     def display(self):
         team_labels = []
+        place_suffixes = {
+            1: 'st',
+            2: 'nd',
+            3: 'rd'
+        }
         for group in self.groups:
-            label = f'Group {group.group_number} 1st'
-            team_labels.append(label)
-        for group in self.groups:
-            label = f'Group {group.group_number} 2nd'
-            team_labels.append(label)
+            for n in range(self.num_advance):
+                # 1st 2nd 3rd suffixes e.g. "nd"
+                place = n + 1
+                # default to "th" if there's not an exception for it
+                place_suffix = place_suffixes.get(place, 'th')
+                label = f'Group {group.group_number} {place}{place_suffix} place'
+                team_labels.append(label)
         # instantiate bracket class
         bviz = BracketViz(team_labels)
         #bviz.shuffle()
@@ -194,7 +201,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-g', "--group_size", default=4, type=int, help="preferred group size to use for RR groups") 
     parser.add_argument('-r', "--group_rounding", default='up', help="allowed values ('up', 'down'). A value of 'up' allows for groups greater than preferred group size, 'down' allows for smaller")
-    parser.add_argument('-i', "--input_file", default='input/players.csv', help="input csv file of player 'name', 'rating'")   
+    parser.add_argument('-i', "--input_file", default='input/players.csv', help="input csv file of player 'name', 'rating'")
+    parser.add_argument('-n', "--num_advance", default=2, type=int, help="number of players that advance to the main draw from each RR group")    
     args = parser.parse_args()
 
     players = load_players_file(args.input_file)
@@ -204,6 +212,7 @@ if __name__ == '__main__':
         preferred_group_size=args.group_size,
         group_rounding_strat=args.group_rounding
     )
+    bracket.num_advance = args.num_advance
     bracket.print_groups()
     print()
     bracket.display()
