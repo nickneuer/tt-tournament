@@ -120,7 +120,7 @@ class Bracket():
         #
         return cls(groups=groups)
 
-    def print_groups(self):
+    def print_groups(self, display_rating=False):
         letters = ['A', 'B', 'C', 'D', 'E']
 
         print(f'TOTAL GROUPS: {len(self.groups)}')
@@ -129,7 +129,10 @@ class Bracket():
             print(f'GROUP {group.group_number}')
             print('-' * 40)
             for i, player in enumerate(group.players):
-                print(f'{letters[i]}) {player.name} ({player.rating})')
+                player_str = f'{letters[i]}) {player.name}' 
+                if display_rating:
+                    player_str = f'{player_str} ({player.rating})'
+                print(player_str)
             # print match order
             player_letters = letters[0: len(group.players)]
             matches = make_rr_matches(player_letters)
@@ -168,6 +171,7 @@ def make_rr_matches(letters):
         else:
             pair = pairs.pop(-1)
         matches.append(pair)
+    matches.reverse()
     return matches
 
 def load_players_file(players_file):
