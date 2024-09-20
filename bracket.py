@@ -28,6 +28,8 @@ class Bracket():
     def __init__(self, groups, num_advance=2):
         self.groups = groups
         self.num_advance = num_advance
+        self.more_advance_group_size = None
+        self.fewer_advance_group_size = None
 
     @staticmethod
     def _seed_groups(players, preferred_group_size):
@@ -126,7 +128,13 @@ class Bracket():
         print(f'TOTAL GROUPS: {len(self.groups)}')
         print()
         for group in self.groups:
-            print(f'GROUP {group.group_number}')
+            num_advance = self.num_advance
+            # check for exceptions
+            if self.more_advance_group_size == len(group.players):
+                num_advance += 1
+            elif self.fewer_advance_group_size == len(group.players):
+                num_advance -= 1
+            print(f'GROUP {group.group_number} - top {num_advance} advance')
             print('-' * 40)
             for i, player in enumerate(group.players):
                 player_str = f'{letters[i]}) {player.name}' 
@@ -148,8 +156,27 @@ class Bracket():
             2: 'nd',
             3: 'rd'
         }
-        for n in range(self.num_advance):
+        # accounting for when we set num_advance exceptions for group size.
+        fewer_advance_size = None
+        # if we have "more players advance" for a particular group size, the
+        # max possible that can advance is num_advance + 1
+        max_players_advance = self.num_advance
+        if self.more_advance_group_size is not None:
+            max_players_advance += 1
+            fewer_advance_size = self.more_advance_group_size - 1
+        # check if we have set fewer advance group size
+        if self.fewer_advance_group_size is not None:
+            fewer_advance_size = self.fewer_advance_group_size
+        # determine group size for which fewer should advance
+        for n in range(max_players_advance):
             for group in self.groups:
+                # check if we have exceptions for this group size
+                if fewer_advance_size is not None and len(group.players) == fewer_advance_size:
+                    if self.more_advance_group_size is not None and n + 1 > self.num_advance:
+                        continue
+                    elif self.fewer_advance_group_size is not None and n + 1 > self.num_advance - 1:
+                        continue
+
                 # 1st 2nd 3rd suffixes e.g. "nd"
                 place = n + 1
                 # default to "th" if there's not an exception for it
@@ -194,6 +221,8 @@ if __name__ == '__main__':
     parser.add_argument('-r', "--group_rounding", default='up', help="allowed values ('up', 'down'). A value of 'up' allows for groups greater than preferred group size, 'down' allows for smaller")
     parser.add_argument('-i', "--input_file", default='input/players.csv', help="input csv file of player 'name', 'rating'")
     parser.add_argument('-n', "--num_advance", default=2, type=int, help="number of players that advance to the main draw from each RR group")
+    parser.add_argument('-f', "--fewer_advance_for_grp_size", type=int, help="if group size == <this param> 1 fewer player advances")
+    parser.add_argument('-m', "--more_advance_for_grp_size", type=int, help="if group size == <this param> 1 more player advances")
     parser.add_argument('-d', "--display_rating", action='store_true', help="number of players that advance to the main draw from each RR group")
 
     args = parser.parse_args()
@@ -206,6 +235,11 @@ if __name__ == '__main__':
         group_rounding_strat=args.group_rounding
     )
     bracket.num_advance = args.num_advance
+    # set any exceptions for group size and num_advance
+    if args.fewer_advance_for_grp_size:
+        bracket.fewer_advance_group_size = args.fewer_advance_for_grp_size
+    if args.more_advance_for_grp_size:
+        bracket.more_advance_group_size = args.more_advance_for_grp_size
     bracket.print_groups(display_rating=args.display_rating)
     print()
     bracket.display()
