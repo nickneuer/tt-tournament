@@ -179,7 +179,8 @@ def load_players_file(players_file):
     with open(players_file) as f:
         reader = csv.reader(f)
         for row in reader:
-            players.append(Player(row[0], int(row[1])))
+            if row[2].strip() == 'Y':
+                players.append(Player(row[0], int(row[1])))
 
     return players
 
@@ -192,7 +193,9 @@ if __name__ == '__main__':
     parser.add_argument('-g', "--group_size", default=4, type=int, help="preferred group size to use for RR groups") 
     parser.add_argument('-r', "--group_rounding", default='up', help="allowed values ('up', 'down'). A value of 'up' allows for groups greater than preferred group size, 'down' allows for smaller")
     parser.add_argument('-i', "--input_file", default='input/players.csv', help="input csv file of player 'name', 'rating'")
-    parser.add_argument('-n', "--num_advance", default=2, type=int, help="number of players that advance to the main draw from each RR group")    
+    parser.add_argument('-n', "--num_advance", default=2, type=int, help="number of players that advance to the main draw from each RR group")
+    parser.add_argument('-d', "--display_rating", action='store_true', help="number of players that advance to the main draw from each RR group")
+
     args = parser.parse_args()
 
     players = load_players_file(args.input_file)
@@ -203,7 +206,7 @@ if __name__ == '__main__':
         group_rounding_strat=args.group_rounding
     )
     bracket.num_advance = args.num_advance
-    bracket.print_groups()
+    bracket.print_groups(display_rating=args.display_rating)
     print()
     bracket.display()
     print()
