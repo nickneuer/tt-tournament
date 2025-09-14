@@ -23,8 +23,6 @@ class Group:
     def get_max_rating(self):
         return sorted(self.players, key=lambda p: p.rating)[-1].rating
 
-# Your original bracket visualization class from lib/bracket_viz.py
-# Your original bracket visualization class from lib/bracket_viz.py
 class BracketViz:
     def __init__(self, teams):
         self.numTeams = len(teams)
@@ -209,7 +207,10 @@ class BracketViz:
                 # Determine color and display text
                 if team_str.startswith('-'):
                     color = colors['tbd']
-                    display_text = "TBD"
+                    if round_idx == 0:
+                        display_text = "BYE"
+                    else:
+                        display_text = "TBD"
                 elif "Group" in team_str:
                     color = colors['group_placeholder']
                     display_text = team_str.replace(' place', '').replace('Group ', 'G')
