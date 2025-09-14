@@ -5,25 +5,8 @@ import itertools
 import math
 import copy
 from typing import List, Optional
+from bracket import Player, Group, Bracket, make_rr_matches
 
-# Import your existing classes (assuming they're available)
-# If running standalone, you'll need to copy the classes here
-
-class Player:
-    def __init__(self, name, rating):
-        self.name = name
-        self.rating = rating
-
-    def __repr__(self):
-        return f'Player({self.name}, {self.rating})'
-
-class Group:
-    def __init__(self, players, group_number):
-        self.players = players
-        self.group_number = group_number
-
-    def get_max_rating(self):
-        return sorted(self.players, key=lambda p: p.rating)[-1].rating
 
 class InteractiveBracket:
     """Enhanced bracket class for Streamlit with interactive winner selection"""
@@ -81,68 +64,6 @@ class InteractiveBracket:
             'lineup': self.lineup
         }
 
-class Bracket:
-    def __init__(self, groups, num_advance=2):
-        self.groups = groups
-        self.num_advance = num_advance
-        self.more_advance_group_size = None
-        self.fewer_advance_group_size = None
-
-    @staticmethod
-    def _snake_seed_groups(players, preferred_group_size, group_rounding_strat='up'):
-        players.sort(key=lambda p: -1 * p.rating)
-        q, r = divmod(len(players), preferred_group_size)
-        num_groups = 0
-        if group_rounding_strat == 'up':
-            num_groups = q
-        elif group_rounding_strat == 'down':
-            num_groups = q
-            if r > 0:
-                num_groups += 1
-        else:
-            raise ValueError('group_rounding_strat must be one of ("up", "down")')
-
-        groups = [] 
-        for _ in range(num_groups):
-            groups.append([])
-        
-        num_players = len(players)
-        for i in range(num_players):
-            group_idx = i % num_groups
-            if group_idx == 0:
-                groups.reverse()
-            p = players.pop(0)
-            groups[group_idx].append(p)
-
-        return groups
-
-    @classmethod
-    def from_players_list(cls, players, preferred_group_size=4, group_rounding_strat='up'):
-        groups = cls._snake_seed_groups(
-            players=players,
-            preferred_group_size=preferred_group_size,
-            group_rounding_strat=group_rounding_strat
-        )
-
-        groups = [sorted(g, key=lambda p: -1 * p.rating) for g in groups]
-        groups = [Group(players=g, group_number=0) for g in groups]
-        groups = sorted(groups, key=lambda g: -1 * g.get_max_rating())
-        for i, g in enumerate(groups):
-            g.group_number = i + 1
-        
-        return cls(groups=groups)
-
-def make_rr_matches(letters):
-    pairs = list(itertools.combinations(letters, 2))
-    matches = []
-    for i in range(len(pairs)):
-        if i % 2 == 0:
-            pair = pairs.pop(0)
-        else:
-            pair = pairs.pop(-1)
-        matches.append(pair)
-    matches.reverse()
-    return matches
 
 def main():
     st.set_page_config(page_title="Tournament Bracket Manager", layout="wide")
@@ -333,68 +254,84 @@ def main():
         st.header("Tournament Bracket")
         
         if st.session_state.interactive_bracket:
+            # Display bracket as interactive graph
+            bracket_fig = st.session_state.interactive_bracket.create_bracket_graph()
+            st.plotly_chart(bracket_fig, use_container_width=True)
+            
+            # Show bracket controls below the graph
             bracket_data = st.session_state.interactive_bracket.get_bracket_structure()
             
-            # Display bracket with interactive winner selection
-            st.subheader("Bracket Progress")
+            st.subheader("Bracket Controls")
             
-            # Show rounds
-            for round_num in range(len(bracket_data['rounds'])):
-                if round_num == 0:
-                    st.write(f"**Round 1 (Initial Seeding)**")
-                    teams_in_round = [team for team in bracket_data['rounds'][0] if not team.startswith('-')]
-                    for i, team in enumerate(teams_in_round):
-                        st.text(f"{i+1:2d}. {team}")
-                else:
-                    st.write(f"**Round {round_num + 1}**")
-                    
-                    # Show matches for this round
-                    prev_round = bracket_data['rounds'][round_num - 1]
-                    current_round = bracket_data['rounds'][round_num]
-                    
-                    for match_idx in range(len(current_round)):
-                        # Get the two teams for this match
-                        team1_idx = match_idx * 2
-                        team2_idx = match_idx * 2 + 1
-                        
-                        if team1_idx < len(prev_round) and team2_idx < len(prev_round):
-                            team1 = prev_round[team1_idx]
-                            team2 = prev_round[team2_idx]
-                            
-                            # Skip if either team is a placeholder
-                            if team1.startswith('-') or team2.startswith('-'):
-                                continue
-                            
-                            col_a, col_b = st.columns([3, 1])
-                            
-                            with col_a:
-                                st.write(f"**Match {match_idx + 1}:** {team1} vs {team2}")
-                            
-                            with col_b:
-                                # Winner selection
-                                current_winner = current_round[match_idx]
-                                if not current_winner.startswith('-'):
-                                    st.success(f"✓ {current_winner}")
-                                else:
-                                    winner = st.selectbox(
-                                        "Winner:",
-                                        options=["", team1, team2],
-                                        key=f"round_{round_num}_match_{match_idx}"
-                                    )
-                                    
-                                    if winner:
-                                        st.session_state.interactive_bracket.update_winner(
-                                            round_num, match_idx, winner
-                                        )
-                                        st.rerun()
+            # Show matches that need winners selected
+            matches_to_resolve = []
+            
+            for round_num in range(1, len(bracket_data['rounds'])):
+                prev_round = bracket_data['rounds'][round_num - 1]
+                current_round = bracket_data['rounds'][round_num]
                 
-                st.divider()
+                for match_idx in range(len(current_round)):
+                    team1_idx = match_idx * 2
+                    team2_idx = match_idx * 2 + 1
+                    
+                    if (team1_idx < len(prev_round) and team2_idx < len(prev_round)):
+                        team1 = prev_round[team1_idx]
+                        team2 = prev_round[team2_idx]
+                        
+                        # Only show matches where both teams are real players (not placeholders or TBD)
+                        if (not team1.startswith('-') and not team2.startswith('-') and 
+                            "Group" not in team1 and "Group" not in team2):
+                            
+                            current_winner = current_round[match_idx]
+                            
+                            if current_winner.startswith('-'):
+                                matches_to_resolve.append({
+                                    'round': round_num,
+                                    'match': match_idx,
+                                    'team1': team1,
+                                    'team2': team2
+                                })
             
-            # Show final winner
+            if matches_to_resolve:
+                st.write("**Select Winners for Active Matches:**")
+                
+                for match in matches_to_resolve:
+                    col_match, col_winner = st.columns([2, 1])
+                    
+                    with col_match:
+                        st.write(f"**Round {match['round'] + 1}, Match {match['match'] + 1}:**")
+                        st.write(f"{match['team1']} vs {match['team2']}")
+                    
+                    with col_winner:
+                        winner = st.selectbox(
+                            "Winner:",
+                            options=["", match['team1'], match['team2']],
+                            key=f"bracket_round_{match['round']}_match_{match['match']}"
+                        )
+                        
+                        if winner:
+                            st.session_state.interactive_bracket.update_winner(
+                                match['round'], match['match'], winner
+                            )
+                            st.rerun()
+            
+            # Show final winner if tournament is complete
             final_round = bracket_data['rounds'][-1]
             if final_round and not final_round[0].startswith('-'):
-                st.balloons()
-                st.success(f"🏆 **Tournament Winner: {final_round[0]}** 🏆")
+                st.success(f"🏆 **Tournament Champion: {final_round[0]}** 🏆")
+            elif not matches_to_resolve:
+                # Check if we're waiting for group winners
+                waiting_for_groups = False
+                for team in bracket_data['rounds'][0]:
+                    if "Group" in team:
+                        waiting_for_groups = True
+                        break
+                
+                if waiting_for_groups:
+                    st.info("👈 Complete group play to unlock bracket matches!")
+                else:
+                    st.info("All matches resolved!")
+            
         else:
             st.info("Generate a tournament to see the bracket visualization")
     
