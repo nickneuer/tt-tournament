@@ -119,12 +119,12 @@ class TournamentConfig:
         
         with st.expander("Advanced Settings"):
             fewer_advance_size = st.number_input(
-                "Group size with 1 fewer advance", 
+                "Group size where 1 fewer player advances", 
                 min_value=0, max_value=8, value=0,
                 help="If group size equals this value, 1 fewer player advances"
             )
             more_advance_size = st.number_input(
-                "Group size with 1 more advance", 
+                "Group size where 1 more player advance", 
                 min_value=0, max_value=8, value=0,
                 help="If group size equals this value, 1 more player advances"
             )
