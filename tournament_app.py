@@ -119,12 +119,12 @@ class TournamentConfig:
         
         with st.expander("Advanced Settings"):
             fewer_advance_size = st.number_input(
-                "Group size where 1 fewer player advances", 
+                "Group size with 1 fewer advance", 
                 min_value=0, max_value=8, value=0,
                 help="If group size equals this value, 1 fewer player advances"
             )
             more_advance_size = st.number_input(
-                "Group size where 1 more player advance", 
+                "Group size with 1 more advance", 
                 min_value=0, max_value=8, value=0,
                 help="If group size equals this value, 1 more player advances"
             )
@@ -395,7 +395,7 @@ class ExportManager:
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("📄 Export Group Results"):
+            if st.button("📄 Export Group Results (CSV)"):
                 csv_data = ExportManager.generate_group_csv()
                 st.download_button(
                     label="💾 Download CSV",
@@ -405,7 +405,165 @@ class ExportManager:
                 )
         
         with col2:
-            st.info("Bracket export functionality coming soon!")
+            if st.button("🖼️ Export Group Visual"):
+                ExportManager.render_group_visual()
+    
+    @staticmethod
+    def render_group_visual():
+        """Display a visual representation of all groups with match schedules"""
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        
+        groups = st.session_state.bracket.groups
+        letters = ['A', 'B', 'C', 'D', 'E']
+        
+        # Calculate the maximum name length for column width adjustment
+        max_name_length = max(
+            len(player.name) 
+            for group in groups 
+            for player in group.players
+        ) if groups else 10
+        
+        # Create individual figures for each group (better for text fitting)
+        for group in groups:
+            st.subheader(f"Group {group.group_number}")
+            
+            # Calculate how many advance from this group
+            num_advance = GroupManager.calculate_advancing_count(group, st.session_state.bracket)
+            
+            # Create two columns: players table and match schedule
+            col_players, col_matches = st.columns([3, 2])
+            
+            with col_players:
+                # Create player table
+                headers = ['Seed', 'Player', 'Rating', 'Status']
+                cell_values = [[], [], [], []]
+                colors = []
+                
+                for i, player in enumerate(group.players):
+                    seed = letters[i]
+                    name = player.name
+                    rating = str(player.rating)
+                    
+                    # Check if player is a group winner
+                    winner_place = None
+                    if group.group_number in st.session_state.group_winners:
+                        for place, winner_name in st.session_state.group_winners[group.group_number].items():
+                            if winner_name == name and place <= num_advance:
+                                winner_place = place
+                                break
+                    
+                    if winner_place:
+                        place_suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(winner_place, 'th')
+                        status = f"Advances ({winner_place}{place_suffix})"
+                        row_color = '#90EE90'  # Light green for advancing
+                    elif group.group_number in st.session_state.group_winners and any(
+                        winner_name == name for winner_name in st.session_state.group_winners[group.group_number].values()
+                    ):
+                        status = "Placed"
+                        row_color = '#FFE4B5'  # Light orange for placed but not advancing
+                    else:
+                        status = "TBD"
+                        row_color = '#F0F0F0'  # Light gray for TBD
+                    
+                    cell_values[0].append(seed)
+                    cell_values[1].append(name)
+                    cell_values[2].append(rating)
+                    cell_values[3].append(status)
+                    colors.append(row_color)
+                
+                # Calculate column widths based on content
+                col_widths = [0.1, max(0.4, min(0.6, max_name_length * 0.02)), 0.15, 0.25]
+                
+                fig = go.Figure(data=[go.Table(
+                    columnwidth=col_widths,
+                    header=dict(
+                        values=headers,
+                        fill_color='#4ECDC4',
+                        font=dict(color='white', size=12, family='Arial'),
+                        align=['center', 'left', 'center', 'center'],
+                        height=35
+                    ),
+                    cells=dict(
+                        values=cell_values,
+                        fill_color=[colors],
+                        font=dict(color='black', size=11, family='Arial'),
+                        align=['center', 'left', 'center', 'center'],
+                        height=30
+                    )
+                )])
+                
+                # Calculate figure height based on number of players
+                table_height = max(200, len(group.players) * 35 + 70)
+                
+                fig.update_layout(
+                    title=f"Group {group.group_number} Players (Top {num_advance} Advance)",
+                    height=table_height,
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    font=dict(family='Arial')
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col_matches:
+                # Create match schedule
+                st.markdown("**Match Schedule:**")
+                player_letters = letters[0:len(group.players)]
+                matches = make_rr_matches(player_letters)
+                
+                # Create match schedule table
+                match_headers = ['Match', 'Opponents']
+                match_values = [[], []]
+                
+                for i, (p1, p2) in enumerate(matches):
+                    # Get actual player names
+                    p1_name = group.players[letters.index(p1)].name
+                    p2_name = group.players[letters.index(p2)].name
+                    
+                    match_values[0].append(f"Match {i + 1}")
+                    match_values[1].append(f"{p1_name} vs {p2_name}")
+                
+                match_fig = go.Figure(data=[go.Table(
+                    columnwidth=[0.25, 0.75],
+                    header=dict(
+                        values=match_headers,
+                        fill_color='#FF6B6B',
+                        font=dict(color='white', size=11, family='Arial'),
+                        align=['center', 'left'],
+                        height=30
+                    ),
+                    cells=dict(
+                        values=match_values,
+                        fill_color='#FFFFFF',
+                        font=dict(color='black', size=10, family='Arial'),
+                        align=['center', 'left'],
+                        height=25,
+                        line=dict(color='#E0E0E0', width=1)
+                    )
+                )])
+                
+                match_fig.update_layout(
+                    title="Round Robin Matches",
+                    height=max(200, len(matches) * 30 + 70),
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    font=dict(family='Arial')
+                )
+                
+                st.plotly_chart(match_fig, use_container_width=True)
+            
+            st.divider()
+        
+        # Add legend explanation
+        st.markdown("""
+        **Status Legend:**
+        - **Green**: Player advances to bracket
+        - **Orange**: Player placed but doesn't advance  
+        - **Gray**: Placement not yet determined
+        """)
+        
+        # Add download button for the full tournament summary
+        if st.button("💾 Download Tournament Summary as PDF"):
+            st.info("PDF download functionality coming soon! For now, use your browser's print function to save as PDF.")
     
     @staticmethod
     def generate_group_csv() -> str:
@@ -415,11 +573,25 @@ class ExportManager:
         
         for group in st.session_state.bracket.groups:
             for i, player in enumerate(group.players):
+                # Determine status
+                status = "TBD"
+                if group.group_number in st.session_state.group_winners:
+                    for place, winner_name in st.session_state.group_winners[group.group_number].items():
+                        if winner_name == player.name:
+                            place_suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(place, 'th')
+                            num_advance = GroupManager.calculate_advancing_count(group, st.session_state.bracket)
+                            if place <= num_advance:
+                                status = f"Advances ({place}{place_suffix} place)"
+                            else:
+                                status = f"Placed {place}{place_suffix}"
+                            break
+                
                 export_data.append({
                     'Group': group.group_number,
                     'Seed': letters[i],
                     'Player': player.name,
-                    'Rating': player.rating
+                    'Rating': player.rating,
+                    'Status': status
                 })
         
         df = pd.DataFrame(export_data)
