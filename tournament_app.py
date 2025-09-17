@@ -392,118 +392,13 @@ class ExportManager:
             return
         
         st.header("Export Options")
-        col1, col2, col3 = st.columns(3)
-        
+        col1, = st.columns(1)
+
         with col1:
-            if st.button("📄 Export Group Results (CSV)"):
-                csv_data = ExportManager.generate_group_csv()
-                st.download_button(
-                    label="💾 Download CSV",
-                    data=csv_data,
-                    file_name="tournament_groups.csv",
-                    mime="text/csv"
-                )
-        
-        with col2:
             if st.button("🖼️ Export Group Visual"):
                 ExportManager.render_group_visual()
-        
-        with col3:
-            if st.button("📋 Export Text Summary"):
-                text_summary = ExportManager.generate_text_summary()
-                st.download_button(
-                    label="💾 Download Text File",
-                    data=text_summary,
-                    file_name="tournament_summary.txt",
-                    mime="text/plain"
-                )
     
-    @staticmethod
-    def generate_text_summary() -> str:
-        """Generate a text-based tournament summary"""
-        groups = st.session_state.bracket.groups
-        letters = ['A', 'B', 'C', 'D', 'E']
-        summary = []
-        
-        summary.append("TOURNAMENT GROUPS SUMMARY")
-        summary.append("=" * 50)
-        summary.append("")
-        
-        for group in groups:
-            num_advance = GroupManager.calculate_advancing_count(group, st.session_state.bracket)
-            
-            summary.append(f"GROUP {group.group_number} - Top {num_advance} Advance")
-            summary.append("-" * 30)
-            summary.append("")
-            
-            # Players section
-            summary.append("PLAYERS:")
-            for i, player in enumerate(group.players):
-                seed = letters[i]
-                
-                # Check status
-                status = "TBD"
-                if group.group_number in st.session_state.group_winners:
-                    for place, winner_name in st.session_state.group_winners[group.group_number].items():
-                        if winner_name == player.name:
-                            place_suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(place, 'th')
-                            if place <= num_advance:
-                                status = f"ADVANCES ({place}{place_suffix} place)"
-                            else:
-                                status = f"Placed {place}{place_suffix}"
-                            break
-                
-                summary.append(f"  {seed}. {player.name:<20} (Rating: {player.rating:>4}) - {status}")
-            
-            summary.append("")
-            
-            # Match schedule
-            summary.append("ROUND ROBIN MATCHES:")
-            player_letters = letters[0:len(group.players)]
-            matches = make_rr_matches(player_letters)
-            
-            for i, (p1, p2) in enumerate(matches):
-                p1_name = group.players[letters.index(p1)].name
-                p2_name = group.players[letters.index(p2)].name
-                summary.append(f"  Match {i+1:2}: {p1_name} vs {p2_name}")
-            
-            summary.append("")
-            summary.append("")
-        
-        # Tournament bracket info
-        if st.session_state.bracket_viz and st.session_state.bracket_viz.rounds:
-            summary.append("BRACKET STATUS")
-            summary.append("=" * 50)
-            summary.append("")
-            
-            final_round = st.session_state.bracket_viz.rounds[-1]
-            if final_round and not str(final_round[0]).startswith('-'):
-                summary.append(f"🏆 TOURNAMENT CHAMPION: {final_round[0]} 🏆")
-            else:
-                summary.append("Tournament bracket in progress...")
-            
-            summary.append("")
-            
-            # Show advancing players
-            summary.append("PLAYERS ADVANCING TO BRACKET:")
-            advancing_players = []
-            for group_num, winners in st.session_state.group_winners.items():
-                group = next((g for g in groups if g.group_number == group_num), None)
-                if group:
-                    num_advance = GroupManager.calculate_advancing_count(group, st.session_state.bracket)
-                    for place, winner in winners.items():
-                        if place <= num_advance:
-                            place_suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(place, 'th')
-                            advancing_players.append(f"  Group {group_num} {place}{place_suffix}: {winner}")
-            
-            if advancing_players:
-                for player in sorted(advancing_players):
-                    summary.append(player)
-            else:
-                summary.append("  (Group play not yet complete)")
-        
-        return "\n".join(summary)
-    
+
     @staticmethod
     def render_group_visual():
         """Display a comprehensive visual of all groups with match schedules"""
@@ -511,11 +406,8 @@ class ExportManager:
         
         groups = st.session_state.bracket.groups
         letters = ['A', 'B', 'C', 'D', 'E']
-        
-        # First show the interactive Plotly version
-        ExportManager._render_plotly_visual()
-        
-        # Then show the HTML export version
+
+        # Show the HTML export version
         st.subheader("Downloadable Version")
         st.markdown("This version is optimized for saving as PNG/PDF:")
         
@@ -532,163 +424,7 @@ class ExportManager:
             file_name="tournament_groups.html",
             mime="text/html"
         )
-    
-    @staticmethod
-    def _render_plotly_visual():
-        """Render the interactive Plotly version"""
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-        
-        groups = st.session_state.bracket.groups
-        letters = ['A', 'B', 'C', 'D', 'E']
-        
-        # Calculate the maximum name length for column width adjustment
-        max_name_length = max(
-            len(player.name) 
-            for group in groups 
-            for player in group.players
-        ) if groups else 10
-        
-        # Create layout: 2 columns per group (players + matches)
-        num_groups = len(groups)
-        cols = 2
-        rows = num_groups
-        
-        # Create subplot titles
-        subplot_titles = []
-        for group in groups:
-            subplot_titles.extend([f"Group {group.group_number} - Players", f"Group {group.group_number} - Matches"])
-        
-        fig = make_subplots(
-            rows=rows,
-            cols=cols, 
-            subplot_titles=subplot_titles,
-            specs=[[{"type": "table"}, {"type": "table"}] for _ in range(rows)],
-            vertical_spacing=0.12,
-            horizontal_spacing=0.05
-        )
-        
-        for idx, group in enumerate(groups):
-            row = idx + 1
-            
-            # Calculate how many advance from this group
-            num_advance = GroupManager.calculate_advancing_count(group, st.session_state.bracket)
-            
-            # PLAYERS TABLE (Left column)
-            headers = ['Seed', 'Player', 'Rating', 'Status']
-            cell_values = [[], [], [], []]
-            colors = []
-            
-            for i, player in enumerate(group.players):
-                seed = letters[i]
-                name = player.name
-                rating = str(player.rating)
-                
-                # Check if player is a group winner
-                winner_place = None
-                if group.group_number in st.session_state.group_winners:
-                    for place, winner_name in st.session_state.group_winners[group.group_number].items():
-                        if winner_name == name and place <= num_advance:
-                            winner_place = place
-                            break
-                
-                if winner_place:
-                    place_suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(winner_place, 'th')
-                    status = f"Advances ({winner_place}{place_suffix})"
-                    row_color = '#90EE90'
-                elif group.group_number in st.session_state.group_winners and any(
-                    winner_name == name for winner_name in st.session_state.group_winners[group.group_number].values()
-                ):
-                    status = "Placed"
-                    row_color = '#FFE4B5'
-                else:
-                    status = "TBD"
-                    row_color = '#F0F0F0'
-                
-                cell_values[0].append(seed)
-                cell_values[1].append(name)
-                cell_values[2].append(rating)
-                cell_values[3].append(status)
-                colors.append(row_color)
-            
-            col_widths = [0.15, max(0.4, min(0.65, max_name_length * 0.025)), 0.2, 0.3]
-            
-            fig.add_trace(
-                go.Table(
-                    columnwidth=col_widths,
-                    header=dict(
-                        values=headers,
-                        fill_color='#4ECDC4',
-                        font=dict(color='white', size=11, family='Arial'),
-                        align=['center', 'left', 'center', 'center'],
-                        height=32
-                    ),
-                    cells=dict(
-                        values=cell_values,
-                        fill_color=[colors],
-                        font=dict(color='black', size=10, family='Arial'),
-                        align=['center', 'left', 'center', 'center'],
-                        height=28
-                    )
-                ),
-                row=row, col=1
-            )
-            
-            # MATCHES TABLE (Right column)
-            player_letters = letters[0:len(group.players)]
-            matches = make_rr_matches(player_letters)
-            
-            match_headers = ['Match', 'Opponents']
-            match_values = [[], []]
-            
-            for i, (p1, p2) in enumerate(matches):
-                p1_name = group.players[letters.index(p1)].name
-                p2_name = group.players[letters.index(p2)].name
-                
-                match_values[0].append(f"{i + 1}")
-                match_values[1].append(f"{p1_name} vs {p2_name}")
-            
-            fig.add_trace(
-                go.Table(
-                    columnwidth=[0.2, 0.8],
-                    header=dict(
-                        values=match_headers,
-                        fill_color='#FF6B6B',
-                        font=dict(color='white', size=11, family='Arial'),
-                        align=['center', 'left'],
-                        height=32
-                    ),
-                    cells=dict(
-                        values=match_values,
-                        fill_color='#FFFFFF',
-                        font=dict(color='black', size=10, family='Arial'),
-                        align=['center', 'left'],
-                        height=28,
-                        line=dict(color='#E0E0E0', width=1)
-                    )
-                ),
-                row=row, col=2
-            )
-        
-        max_players_per_group = max(len(group.players) for group in groups)
-        base_height_per_group = max(200, max_players_per_group * 35 + 80)
-        total_height = max(600, num_groups * base_height_per_group)
-        
-        fig.update_layout(
-            title=dict(
-                text="Tournament Groups Overview (Interactive)",
-                x=0.5,
-                font=dict(size=18, family='Arial'),
-                pad=dict(b=20)
-            ),
-            height=total_height,
-            showlegend=False,
-            margin=dict(l=20, r=20, t=80, b=40),
-            font=dict(family='Arial')
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-    
+
     @staticmethod
     def _generate_html_visual():
         """Generate HTML version optimized for export"""
@@ -875,38 +611,6 @@ class ExportManager:
         ''')
         
         return ''.join(html_parts)
-    
-    @staticmethod
-    def generate_group_csv() -> str:
-        """Generate CSV data for group results"""
-        export_data = []
-        letters = ['A', 'B', 'C', 'D', 'E']
-        
-        for group in st.session_state.bracket.groups:
-            for i, player in enumerate(group.players):
-                # Determine status
-                status = "TBD"
-                if group.group_number in st.session_state.group_winners:
-                    for place, winner_name in st.session_state.group_winners[group.group_number].items():
-                        if winner_name == player.name:
-                            place_suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(place, 'th')
-                            num_advance = GroupManager.calculate_advancing_count(group, st.session_state.bracket)
-                            if place <= num_advance:
-                                status = f"Advances ({place}{place_suffix} place)"
-                            else:
-                                status = f"Placed {place}{place_suffix}"
-                            break
-                
-                export_data.append({
-                    'Group': group.group_number,
-                    'Seed': letters[i],
-                    'Player': player.name,
-                    'Rating': player.rating,
-                    'Status': status
-                })
-        
-        df = pd.DataFrame(export_data)
-        return df.to_csv(index=False)
 
 
 def render_sidebar():
