@@ -109,8 +109,8 @@ class TournamentConfig:
     def render_settings() -> Dict[str, Any]:
         """Render tournament settings and return configuration"""
         st.subheader("Group Settings")
-        group_size = st.slider("Preferred Group Size", min_value=2, max_value=8, value=4)
-        group_rounding = st.selectbox("Group Rounding Strategy", ["up", "down"])
+        group_size = st.slider("Preferred Group Size", min_value=2, max_value=8, value=3)
+        group_rounding = st.selectbox("Group Rounding Strategy", ["up", "down"], index=0)
         num_advance = st.number_input("Players Advancing per Group", min_value=1, max_value=4, value=2)
         
         # Advanced settings
@@ -125,7 +125,7 @@ class TournamentConfig:
             )
             more_advance_size = st.number_input(
                 "Group size with 1 more advance", 
-                min_value=0, max_value=8, value=0,
+                min_value=0, max_value=8, value=4,
                 help="If group size equals this value, 1 more player advances"
             )
         
